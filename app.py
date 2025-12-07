@@ -149,6 +149,10 @@ if st.button("🚀 Predict Asthma Risk"):
 
     st.markdown(f"<div class='box {risk_class}'><h3>{label} ({prob:.2f})</h3></div>", unsafe_allow_html=True)
 
+st.subheader("📊 Animated Risk Meter")
+g = risk_gauge(prob)
+st.plotly_chart(g, use_container_width=True)
+
     st.subheader("📌 What This Means")
     st.write("""
     Your risk is influenced by:
@@ -161,4 +165,5 @@ if st.button("🚀 Predict Asthma Risk"):
     """)
 
     st.caption("Powered by ONNX AI • Built by Noel Graceson")
+
 
