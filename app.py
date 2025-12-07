@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import numpy as np
 import onnxruntime as ort
+import plotly.graph_objects as go   # NEW ← Gauge chart
 
 # -----------------------------------
 # Load ONNX Model & Feature Order
@@ -56,14 +57,38 @@ st.markdown("<p class='big-title'>🩺 Asthma Risk Assessment</p>", unsafe_allow
 st.write("Created by **Noel Graceson — AI Meets Healthcare**")
 
 # -----------------------------------
+# Animated Gauge Function
+# -----------------------------------
+def risk_gauge(prob):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=prob * 100,
+        title={"text": "Risk %"},
+        number={"suffix": "%"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "black"},
+            "steps": [
+                {"range": [0, 20], "color": "#2ecc71"},  
+                {"range": [20, 50], "color": "#f1c40f"},
+                {"range": [50, 100], "color": "#e74c3c"}
+            ],
+            "threshold": {
+                "line": {"color": "black", "width": 4},
+                "thickness": 0.8,
+                "value": prob * 100
+            }
+        }
+    ))
+    fig.update_layout(height=270, margin=dict(l=10, r=10, t=30, b=10))
+    return fig
+
+# -----------------------------------
 # Mapping Functions
 # -----------------------------------
-
 age_map = {"Under 15":0,"15-30":1,"30-45":2,"45-60":3,"60+":4}
 binary_map = {"Yes":1, "No":0}
 smoking_map = {"No":0, "Some days":1, "Every day":2, "Invalid":-1}
-
-# UPDATED — added 2–5
 cigs_map = {"<1":0, "2-5":1, ">5":2, "Invalid":-1}
 
 def encode_duration(x):
@@ -79,7 +104,7 @@ def encode_duration(x):
 col1, col2 = st.columns(2)
 
 with col1:
-    gender_label = st.selectbox("Gender", ["Male", "Female"])  # NEW field
+    gender_label = st.selectbox("Gender", ["Male", "Female"])
     age_group = st.selectbox("Age Group", list(age_map.keys()))
     pregnancy = st.selectbox("Pregnancy", ["Yes","No"])
     blood_pressure = st.selectbox("High Blood Pressure", ["Yes","No"])
@@ -94,10 +119,7 @@ with col2:
     height = st.number_input("Height (cm)", 50.0, 220.0, 170.0)
     exercise = st.slider("Exercise Days per Month", 0, 30, 8)
     smoking = st.selectbox("Smoking Frequency", list(smoking_map.keys()))
-    
-    # UPDATED — new dropdown option included
     cigs = st.selectbox("Cigarettes per Day", list(cigs_map.keys()))
-    
     duration_insulin = st.text_input("Insulin Duration (e.g., '6 months' or 'Invalid')", "Invalid")
     still_asthma = st.selectbox("Currently Have Asthma?", ["Yes","No"])
     er_visit = st.selectbox("ER Visit for Breathing Problems (Past year?)", ["Yes","No"])
@@ -111,7 +133,7 @@ bmi = weight / ((height/100)**2)
 if st.button("🚀 Predict Asthma Risk"):
     
     data_dict = {
-        "Gender": 1 if gender_label == "Male" else 0,   # NEW mapping
+        "Gender": 1 if gender_label == "Male" else 0,
         "Age_Group": age_map[age_group],
         "Pregnancy_status": binary_map[pregnancy],
         "Blood_pressure": binary_map[blood_pressure],
@@ -131,7 +153,6 @@ if st.button("🚀 Predict Asthma Risk"):
         "Exercise_per_month": exercise,
     }
 
-    # SAFE ordering (prevents KeyError)
     input_row = np.array([[data_dict.get(feat, 0) for feat in feature_order]], dtype=np.float32)
 
     pred = model.run(None, {"input": input_row})[0][0]
@@ -149,9 +170,9 @@ if st.button("🚀 Predict Asthma Risk"):
 
     st.markdown(f"<div class='box {risk_class}'><h3>{label} ({prob:.2f})</h3></div>", unsafe_allow_html=True)
 
-st.subheader("📊 Animated Risk Meter")
-g = risk_gauge(prob)
-st.plotly_chart(g, use_container_width=True)
+    st.subheader("📊 Animated Risk Meter")
+    gauge = risk_gauge(prob)
+    st.plotly_chart(gauge, use_container_width=True)
 
     st.subheader("📌 What This Means")
     st.write("""
@@ -164,6 +185,5 @@ st.plotly_chart(g, use_container_width=True)
     This tool is for awareness only — not diagnosis.
     """)
 
-    st.caption("Powered by ONNX AI • Built by Noel Graceson")
-
+    st.caption("⚕️ Powered by ONNX AI • Built by Noel Graceson")
 
